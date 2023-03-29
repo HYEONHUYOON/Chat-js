@@ -16,7 +16,7 @@ function App(props) {
       <Routes>
         <Route path='/' element ={<Home/>}/>
         <Route path='/Signin' element = {<Signin/>}/>
-        <Route path='/chatlist' element = {<ChatList />}/>
+        <Route path='/chatlist' element = {<ChatList/>}/>
         <Route path='/makeroom' element = {<MakeRoom/>}/>
         </Routes>
       </BrowserRouter>

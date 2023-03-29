@@ -7,8 +7,6 @@ import Chat from './chat';
 
 const socket = io.connect('http://localhost:3000')
 
-//http 와 socket 함께써서 에러 해결요망
-
 function ChatList() {
 
     const navigate = useNavigate();
@@ -40,13 +38,13 @@ function ChatList() {
         })
     }
 
-    //방입장
+    //방입장 
     const enterRoom = (num)=>{
       if(name!==""){
         setroomNum(num);
         setenterState(false);
-        socket.emit('joinRoom',roomNum,name);
-        console.log('enter')
+        socket.emit('joinRoom',num,name);
+        console.log(`enter ${roomNum}`)
       }
       else{
         alert('Please enter your name')
@@ -93,7 +91,7 @@ function ChatList() {
           })}
           </div>  
         </div>
-      </div>) : (<Chat nameProps={name} roomNumprops ={roomNum} getRoomState={getRoomState}/>)}
+      </div>) : (<Chat nameProps={name} roomNumprops ={roomNum} getRoomState={getRoomState} socket = {socket}/>)}
     </div>
   );
 }

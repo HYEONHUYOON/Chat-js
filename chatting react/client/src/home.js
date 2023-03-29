@@ -32,7 +32,7 @@ function Home() {
             else{
                 alert(res);
             }
-        })
+        }).catch("login err");
     }
     }
 

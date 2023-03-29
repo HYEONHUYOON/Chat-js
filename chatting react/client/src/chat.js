@@ -1,12 +1,13 @@
 import './App.css';
 
-import {io} from "socket.io-client"
 import {useEffect, useState,useRef} from 'react'
 import {useNavigate} from "react-router-dom"
+import {io} from 'socket.io-client'
 
-const socket = io.connect('http://localhost:3000');
+function Chat({nameProps,roomNumprops,getRoomState,socket}) {
 
-function Chat({nameProps,roomNumprops,getRoomState}) {
+  //날짜계산
+  const today = new Date();
 
   const [typingMsg,setTypingMsg] = useState("");
   const [msg,setMsg] = useState([]);
@@ -15,6 +16,14 @@ function Chat({nameProps,roomNumprops,getRoomState}) {
 
   const scrollRef = useRef();
 
+  let a = 0;
+
+  let msgData={
+    key : "",
+    msg : "",
+    time : "",
+}
+  
   //나가기
   function leave(){
     getRoomState(true);
@@ -24,10 +33,24 @@ function Chat({nameProps,roomNumprops,getRoomState}) {
 
   //메세지 보냄
   const sendMsg = async()=>{
-    console.log('보냄');
-    console.log(roomNum)
-    await socket.emit("sendMsg",typingMsg,name,roomNumprops);
+    if(typingMsg!==""){
+
+      let hours = ('0' + today.getHours()).slice(-2); 
+      let minutes = ('0' + today.getMinutes()).slice(-2);
+      const time = hours.toString() + " : " + minutes.toString();
+
+      msgData.msg = typingMsg;
+      msgData.time = time;
+      msgData.key = name;
+
+      const msgDatajson = JSON.stringify(msgData);
+
+    await socket.emit("sendMsg",msgDatajson,roomNum);
+
+    setMsg((list)=>[...list,msgData]);
+
     setTypingMsg("");
+    }
   }
 
   //엔터시
@@ -40,19 +63,18 @@ function Chat({nameProps,roomNumprops,getRoomState}) {
     }
   }
 
-  //렌더링시 
   useEffect(()=>{
-
-    socket.on('sendBackCasting',(msgData)=>{
-      console.log('hey')
-      const msgJson = JSON.parse(msgData);
-      setMsg((list)=>[...list,msgJson]);
-      console.log('받음')
-    })
-    console.log('안녕');
-    console.log(roomNumprops)
+    console.log("정보")
     setname(nameProps);
     setRoomNum(roomNumprops);
+  },[])
+
+  //소켓이 update 될 때마다
+  useEffect(()=>{
+    socket.on('sendBackCasting',function(msgDatajson){   
+      const msgJson = JSON.parse(msgDatajson);
+      setMsg((list)=>[...list,msgJson]);
+    })
   },[socket]);
   
   return (
@@ -72,15 +94,51 @@ function Chat({nameProps,roomNumprops,getRoomState}) {
       <div className="msger-chat">
         <div className ="chatBox">
             {msg.map((msgM)=>{
-              return (
-                <div className="msg left-msg" key ={msgM.key}>
+              if(msgM.key === name){
+                return(
+                  <div className="msg right-msg" key ={msgM.key}>
+
                   <div className="msg-bubble">
+
                     <div className="msg-text" ref ={scrollRef} >
                       {msgM.msg}
+                    </div>
+
+                    <div className='msg-info'>
+
+                    <div className="msg-info-name" ref ={scrollRef}> 
+                      {msgM.key}
+                    </div>
+                    <div className="msg-info-time" ref ={scrollRef} >
+                      {msgM.time}
+                    </div>
+                    </div>
+                  </div>
+              </div>
+                )
+              }else{
+              return (
+                <div className="msg left-msg" key ={msgM.key}>
+
+                  <div className="msg-bubble">
+
+                    <div className="msg-text" ref ={scrollRef} >
+                      {msgM.msg}
+                    </div>
+
+                    <div className='msg-info'>
+
+                    <div className="msg-info-name" ref ={scrollRef}> 
+                      {msgM.key}
+                    </div>
+                    <div className="msg-info-time" ref ={scrollRef} >
+                      {msgM.time}
+                    </div>
                     </div>
                   </div>
               </div>
               )
+              }
             })}
         </div>
       </div>

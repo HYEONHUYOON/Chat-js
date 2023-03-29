@@ -1,19 +1,65 @@
 const express = require('express');
 const app = express();
-const cors = require('cors');
-const http = require('http');
-const {Server} = require('socket.io');
 const { json } = require('express');
 
+const cors = require('cors');
+const http = require('http');
+
+const {Server} = require('socket.io');
+
+require('dotenv').config();
+
+//암호화
+const crypto = require('crypto');
+
+//DB
+const mongoose = require('mongoose');
+const {Schema} = require('mongoose')
+
+//env !gitignore
+const uri = process.env.DATABASE_URL;
+
+//디비 연결
+mongoose.connect(uri,{
+    useNewUrlParser : true,
+}).then(()=>{
+    console.log("DB Connected");
+}).catch(()=>{
+    console.log("DB connect Fail");
+})
+
+//디비 스키마
+let UserSchema = new Schema({
+    user_id: {
+      required: true,
+      unique: true,
+      type: String,
+    },
+    salt: {
+        required: true,
+        type: String,
+      },
+    password: {
+      required: true,
+      type: String,
+    },
+})
+
+let RoomSchema = new Schema({
+
+})
+
+const userDataModel = mongoose.model('UserData', UserSchema)
+
+//서버
 const server = http.createServer(app);
 
 const fs = require('fs')
-const today = new Date();
 
-let userData =[{
-    key : "",
-    pw : "",
-}]
+// let userData =[{
+//     key : "",
+//     pw : "",
+// }]
 
 let msgData={
     key : "",
@@ -22,19 +68,13 @@ let msgData={
 }
 
 roomNumCount = 0;
+
 let roomData=[{
     roomNum : roomNumCount,
     roomName : "",
 }]
 
 let userCount = 0;
-
-const io = new Server(server,{
-    cors:{
-        origin : 'http://localhost:3001',
-        methods : ['GET','POST'],
-    },
-});
 
 app.use(express.json());
 app.use(cors());
@@ -46,19 +86,22 @@ app.post('/signin',(req,res)=>{
     
     const{key,pw} = req.body;
 
-    if(userCount === 0){
-        userData[0].key = key;
-        userData[0].pw = pw;
-    }
-    else{
-        userData.push({key,pw});
-    }
+    //추가적인 난수
+    const salt = crypto.randomBytes(128).toString('base64');
 
-    userCount++;
+    //스키마
+    const userData = new userDataModel({
+        user_id : key,
+        salt : salt,
+        password : crypto
+        .createHash('sha512')
+        .update(pw + salt)
+        .digest('hex')
+    });
 
-    console.log(userData.map((m)=>{
-        console.log(m);
-    }))
+    userData.save().then(()=>{
+        console.log('sign up sucess');
+    });
 })
 
 //로그인
@@ -68,25 +111,44 @@ app.post('/login',(req,res)=>{
     
     const{key,pw} = req.body;
 
-    //아이디 비교
-    userData.map((data)=>{
-        console.log(data.key)
-        if(data.key === key)
-        {
-            console.log("ID exists")
-            if(data.pw === pw)
-            {
-                return res.send('login Succes');  
-            }
-            else{
-                return res.send('Password doesnt match'); 
-            }
-        }
-        else{
-            console.log("ID does not exist")
-            return res.send('ID does not exist');  
-        }
-    })  
+    // const salt = userDataModel.findOne({user_id : key}).then((err,docs)=>{
+    //         if(pw === docs.pass)
+    //         {
+    //             console.log("A");
+    //         }
+    //         else{
+    //             console.log("B");
+    //         }
+    //     }
+
+    // );
+
+    console.log(salt);
+
+    //let idexist = ""; 
+
+    // //아이디 비교
+    // userData.map((data)=>{
+    //     console.log(data.key)
+    //     if(data.key === key)
+    //     {
+    //         idexist = key;
+            
+    //         console.log("ID exists")
+    //         if(data.pw === pw)
+    //         {
+    //             return res.send('login Succes');  
+    //         }
+    //         else{
+    //             return res.send('Password doesnt match'); 
+    //         }
+    //     }
+    // })  
+
+    // if(idexist === ""){
+    //     console.log("ID does not exist")
+    //     return res.send('ID does not exist');  
+    // }
 })
 
 //채팅 방 생성
@@ -113,19 +175,29 @@ app.post('/makeRoom',(req,res)=>{
     return res.send('MakeRoom');    
 })
 
+//방정보 
 app.get('/reqroom',(req,res)=>{
-    console.log(roomData)
+    //console.log(roomData)
     return res.json(roomData)
 })
 
+//소켓
+const io = new Server(server,{
+    cors:{
+        origin : 'http://localhost:3001',
+        methods : ['GET','POST'],
+    },
+});
+
 //소켓통신
 io.on('connection',(socket)=>{
-    console.log('socket connected');
+    console.log(`socket ${socket.id} connected`);
 
-    //방입장
-    socket.on('joinRoom',(roomNum,name)=> {
-        socket.join(roomNum);
-        console.log(`enter ${name} ${roomNum}`)
+    socket.on('joinRoom',(num,name)=> {
+        console.log(`socket ${socket.id} join`);
+        socket.join(num);
+        console.log(num);
+        console.log(`enter ${name} ${num}`)
     })
     
     // socket.on('leaveRoom',()=>{
@@ -134,27 +206,12 @@ io.on('connection',(socket)=>{
     // });
  
     //메세지
-    socket.on('sendMsg',(msg,name,roomNum)=>{
-
-        console.log('받음')
-        console.log(roomNum);
-        console.log(msg);
-        //시간
-        let hours = ('0' + today.getHours()).slice(-2); 
-        let minutes = ('0' + today.getMinutes()).slice(-2);
-        const time = hours.toString() + " : " + minutes.toString();
-
-        //userMsg[0].key = key;
-        msgData.msg = msg;
-        msgData.time = time;
-        msgData.key = name;
-
-        //제이슨 파일 작성
-        const msgDatajson = JSON.stringify(msgData)
-        //fs.appendFile('msgData',msgDatajson);
+    socket.on('sendMsg',(msgDatajson,roomNum)=>{
         
+        console.log(msgDatajson)
+
         //메세지 반환
-        io.to(roomNum).emit('sendBackCasting',(JSON.stringify(msgData)));
+        socket.to(roomNum).emit('sendBackCasting',msgDatajson);
     })
 })
 
