@@ -2,7 +2,7 @@ import './App.css';
 import {useState} from 'react'
 import {useNavigate} from "react-router-dom"
 
-function Home() {
+function Home({setIdFunc}) {
 
     const navigate = useNavigate();
 
@@ -27,6 +27,7 @@ function Home() {
         .then((res)=>{
             console.log(res);
             if(res === "login Succes"){
+                setIdFunc(id);
                 navigate('/chatlist');
             }
             else{
@@ -85,11 +86,8 @@ function Home() {
 
       <div className='menuBatch'>
         <button className='button' onClick={Signin}>Sign up</button>
-
       </div>
-
       </div>
-
     </div>
   );
 }

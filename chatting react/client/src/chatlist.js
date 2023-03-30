@@ -4,17 +4,21 @@ import {json, useNavigate} from "react-router-dom"
 import {io} from 'socket.io-client'
 
 import Chat from './chat';
+import RoomSetting from './roomSetting';
 
 const socket = io.connect('http://localhost:3000')
 
-function ChatList() {
+function ChatList({idprops}) {
 
     const navigate = useNavigate();
 
+    const [id,setId] = useState("");
     const [name,setname] = useState("");
     const [roomNum,setroomNum] = useState("");        
     const [chatRoom,setChatRoom] = useState([]);
     const [enterState,setenterState] = useState(true);
+    const [enterSetting,setSettingState] = useState(false);
+    const [settingRoomName,setSettingRoomName] = useState("");
   
     //방 생성 이동
     const makeroom=()=>{
@@ -51,11 +55,30 @@ function ChatList() {
       }
     }
 
+    //채팅창 입장
+    const settingRoom = (state,idKey)=>{
+      console.log('Setting');
+      setSettingRoomName(idKey);
+      settingRoomState(state);
+    }
+
+    //페이지 상태
+    const settingRoomState = (e)=>{
+      setSettingState(e);
+    }
+
     //렌더링시 한번
     useEffect(()=>{
+        setId(idprops)
         reqRoom();
     },[])
 
+    //설정시
+    useEffect(()=>{
+      reqRoom();
+  },[enterSetting])
+
+  if(!enterSetting){
   return (
     <div className="app">{enterState ? (
       <div className='msger'>
@@ -65,7 +88,7 @@ function ChatList() {
         <input 
                 className='inputData'
                 type={'text'}
-                placeholder={'NAME'}
+                placeholder={'Name'}
                 value = {name}
                 onChange = {(e)=>{
                     setname(e.target.value); 
@@ -77,23 +100,41 @@ function ChatList() {
           <button className='makeroombutton' onClick={makeroom}>Make Room</button>    
         </div>
         <div className='menuBatch'>
-          {chatRoom.map((m)=>{
-            if(m.roomNum !==0)
-            return(
-              <div className='viewChattingRoom' key = {m.roomNum}>
+          {
+          chatRoom.map((m)=>{
+            if(m.roomMaker === id){
+              return(
+              <div className='viewChattingRoom' key = {m._id}>
                 <div className='viewChattingRoom'>
-                <p>&#91; {m.roomNum} Room &#93;</p>
-                <p>{m.roomName}</p>
-                <button className='button' onClick={()=>enterRoom(m.roomNum)}>Enter</button>  
+                <p>Chat Room</p>
+                <p>&#91; {m.roomName} &#93;</p>
+                <button className='button' onClick={()=>enterRoom(m._id)}>Enter</button>  
+                <button className='buttonSetting' onClick={()=>settingRoom(true,m._id)}>Setting</button>  
                 </div>
               </div>
-            )
-          })}
+              )
+            }else{
+            return(
+              <div className='viewChattingRoom' key = {m._id}>
+                <div className='viewChattingRoom'>
+                <p>Chat Room</p>
+                <p>&#91; {m.roomName} &#93;</p>
+                <button className='button' onClick={()=>enterRoom(m._id)}>Enter</button>  
+                </div>
+              </div>
+            )}
+          }
+          )}
           </div>  
         </div>
       </div>) : (<Chat nameProps={name} roomNumprops ={roomNum} getRoomState={getRoomState} socket = {socket}/>)}
     </div>
   );
+        }else{
+          return(
+            <RoomSetting settingRoomState={settingRoomState} room_id ={settingRoomName}/>
+          )
+        }
 }
 
 export default ChatList;

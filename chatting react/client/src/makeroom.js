@@ -1,11 +1,12 @@
 import './App.css';
-import {useState} from 'react'
+import {useEffect, useState} from 'react'
 import {useNavigate} from "react-router-dom"
 
-function MakeRoom() {
+function MakeRoom({idprops}) {
     const navigate = useNavigate();
 
     const [roomName,setRoomName] = useState("");
+    const [id,setId] = useState("");
 
     async function makeroom(){
         if(roomName!==""){
@@ -16,10 +17,12 @@ function MakeRoom() {
                     'Content-Type': 'application/json'
                 },
                 body : JSON.stringify({
-                    'key' : roomName,
+                    'roomName' : roomName,
+                    'id' : id,
                 })
             })
         }
+        console.log("넘어가")
         navigate('/chatlist');
     }
 
@@ -31,6 +34,11 @@ function MakeRoom() {
             }
         }
     }
+
+    useEffect(()=>{
+        setId(idprops)
+        console.log(id);
+    },[])
 
   return (
     <div className="app">

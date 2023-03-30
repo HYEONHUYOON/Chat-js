@@ -45,36 +45,31 @@ let UserSchema = new Schema({
     },
 })
 
+//방 데이터
 let RoomSchema = new Schema({
-
+    roomName:{
+        required: true,
+        type: String,
+    },
+    roomMaker: {
+        required: true,
+        type: String,
+    },
 })
 
-const userDataModel = mongoose.model('UserData', UserSchema)
+const userDataModel = mongoose.model('UserData', UserSchema);
+const roomDataModel = mongoose.model('RoomData', RoomSchema);
 
 //서버
 const server = http.createServer(app);
 
-const fs = require('fs')
-
-// let userData =[{
-//     key : "",
-//     pw : "",
-// }]
+const fs = require('fs');
 
 let msgData={
     key : "",
     msg : "",
     time : "",
 }
-
-roomNumCount = 0;
-
-let roomData=[{
-    roomNum : roomNumCount,
-    roomName : "",
-}]
-
-let userCount = 0;
 
 app.use(express.json());
 app.use(cors());
@@ -89,7 +84,7 @@ app.post('/signin',(req,res)=>{
     //추가적인 난수
     const salt = crypto.randomBytes(128).toString('base64');
 
-    //스키마
+    //유저 정보 스키마
     const userData = new userDataModel({
         user_id : key,
         salt : salt,
@@ -105,50 +100,42 @@ app.post('/signin',(req,res)=>{
 })
 
 //로그인
-app.post('/login',(req,res)=>{
+app.post('/login',async(req,res)=>{
     console.log("login")
     res.header("Access-Control-Allow-Origin", "*");
     
     const{key,pw} = req.body;
 
-    // const salt = userDataModel.findOne({user_id : key}).then((err,docs)=>{
-    //         if(pw === docs.pass)
-    //         {
-    //             console.log("A");
-    //         }
-    //         else{
-    //             console.log("B");
-    //         }
-    //     }
+    //디비 정보 탐색
+    const isExist = await userDataModel.exists({user_id : key});
 
-    // );
+    //값이 존재 한다면
+    if(isExist)
+    {
+        const docs = await userDataModel.find({user_id : key});
 
-    console.log(salt);
-
-    //let idexist = ""; 
-
-    // //아이디 비교
-    // userData.map((data)=>{
-    //     console.log(data.key)
-    //     if(data.key === key)
-    //     {
-    //         idexist = key;
-            
-    //         console.log("ID exists")
-    //         if(data.pw === pw)
-    //         {
-    //             return res.send('login Succes');  
-    //         }
-    //         else{
-    //             return res.send('Password doesnt match'); 
-    //         }
-    //     }
-    // })  
-
-    // if(idexist === ""){
-    //     console.log("ID does not exist")
-    //     return res.send('ID does not exist');  
-    // }
+        //비밀번호 확인
+        docs.map((doc)=>{   
+            console.log(doc.user_id);
+            //hash 비교
+            if(crypto
+                .createHash('sha512')
+                .update(pw + doc.salt)
+                .digest('hex') === doc.password)
+                {
+                    console.log(`${key} login Succes`);
+                    return res.send('login Succes');
+                }
+                //비밀번호 불일치
+                else{
+                    return res.send('Password doesnt match'); 
+                }
+        })
+    }
+    else{
+        return res.send('ID does not exist'); 
+    }
+   
 })
 
 //채팅 방 생성
@@ -156,29 +143,63 @@ app.post('/makeRoom',(req,res)=>{
     console.log("MakeRoom")
     res.header("Access-Control-Allow-Origin", "*");
     
-    const{key} = req.body;
+    const{roomName,id} = req.body;
 
-    roomNumCount ++;
+    console.log(roomName,id);
 
-    if(roomNumCount === 1){
-        roomData[0].roomNum = roomNumCount;
-        roomData[0].roomName = key;
-    }
-    else{
-        roomData.push({
-            roomNum : roomNumCount,
-            roomName : key,
-        });
-    }
+    //방 정보 스키마
+    const roomData = new roomDataModel({
+        roomName : roomName,
+        roomMaker : id,
+    });
 
-    console.log(JSON.stringify(roomData))
-    return res.send('MakeRoom');    
+    //방 등록
+    roomData.save().then(()=>{
+        console.log('Room Make Sucess');
+        return res.send('MakeRoom');    
+    });
+})
+
+//방이름 바꾸기
+app.patch('/changeRoomName',async(req,res)=>{
+    console.log('changeRoomName');
+    const {origin,changeName} = req.body;
+
+    console.log(origin);
+    console.log(changeName);
+
+    const pass = await roomDataModel.updateOne({_id:origin},{$set : {roomName: changeName}});
+
+    return res.status(200);
+})
+
+app.patch('/deleteRoom',async(req,res)=>{
+    console.log('deleteRoom');
+    const {origin,changeName} = req.body;
+
+    console.log(origin);
+    console.log(changeName);
+
+    const pass = await roomDataModel.deleteOne({_id:origin});
+
+    return res.status(200);
 })
 
 //방정보 
-app.get('/reqroom',(req,res)=>{
-    //console.log(roomData)
-    return res.json(roomData)
+app.get('/reqroom',async(req,res)=>{
+
+    //방 정보 유무
+    const isExist = await roomDataModel.exists();
+
+    if(isExist){
+        console.log("방 존재")
+        const docs = await roomDataModel.find();
+
+        return res.json(docs);
+    }
+
+
+    //return res.json(roomData)
 })
 
 //소켓
@@ -202,7 +223,7 @@ io.on('connection',(socket)=>{
     
     // socket.on('leaveRoom',()=>{
     //     console.log(`leave Room ${roomNum}`)
-    //     socket.leave(roomNum);
+    //     //socket.leave(roomNum);
     // });
  
     //메세지
