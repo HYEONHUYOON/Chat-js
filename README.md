@@ -1,6 +1,10 @@
 # 채팅 웹
 
-![Uploading 스크린샷 2023-03-31 오후 2.08.56.png…]()
+<img width="1680" alt="스크린샷 2023-03-31 오후 2 06 47" src="https://user-images.githubusercontent.com/101074004/229051956-08664012-13c8-4a3c-9da0-282d554d49c3.png">
+
+
+<img width="1680" alt="Chat" src="https://user-images.githubusercontent.com/101074004/229052312-857e8d94-326e-4ff5-9c0e-bcfd69096eb5.png">
+
 
 ---
 
@@ -59,7 +63,8 @@
     
 ---
 
-![Uploading 제목 없는 다이어그램.drawio-3.png…]()
+
+![chat diagram](https://user-images.githubusercontent.com/101074004/229051850-79f3c28b-c169-44fe-b34d-ea69482a2611.png)
 
 
 
